@@ -118,7 +118,7 @@ void actTask(void *pvParameters) {
                 /* code */
                 break;
             case CODE_ANGLE_HORIZONTAL:
-                if (buffer.data <= 100) {
+                if (buffer.data <= MAX_PERCENT) {
                     buffer.data = (buffer.data / float(MAX_PERCENT)) * float(MAX_SPEED);
                 } else {
                     buffer.data = (buffer.data - float(MAX_PERCENT)) / float(MAX_PERCENT) * float(MAX_SPEED) * -1;
@@ -128,7 +128,7 @@ void actTask(void *pvParameters) {
                 /* code */
                 break;
             case CODE_ANGLE_VERTICAL:
-                if (buffer.data <= 100) {
+                if (buffer.data <= MAX_PERCENT) {
                     buffer.data = (buffer.data / float(MAX_PERCENT)) * float(MAX_SPEED);
                 } else {
                     buffer.data = (buffer.data - float(MAX_PERCENT)) / float(MAX_PERCENT) * float(MAX_SPEED) * -1;
