@@ -36,6 +36,10 @@ int lastPositionVerti = 0;
 
 #define RELEASE_PIN 6
 
+// CONST DEFINE
+#define MAX_ANALOG 255
+#define MAX_PERCENT 100
+
 struct dataLog {
     char code;
     int data;
@@ -76,7 +80,7 @@ void actTask(void *pvParameters) {
         if (xQueueReceive(dataQueue, &buffer, portMAX_DELAY) == pdPASS) {
             switch (buffer.code) {
             case CODE_SPEED_LEFT:
-                lastValueSpeedLeft = (buffer.data / 100) * 255;
+                lastValueSpeedLeft = (buffer.data / float(MAX_PERCENT)) * float(MAX_ANALOG);
                 if (lastValueSpeedLeft <= buffer.data) {
                     for (int i = lastValueSpeedLeft; i < buffer.data; i++) {
                         analogWrite(SPEED_LEFT, i);
@@ -95,7 +99,7 @@ void actTask(void *pvParameters) {
                 /* code */
                 break;
             case CODE_SPEED_RIGHT:
-                lastvalueSpeedRight = (buffer.data / 100) * 255;
+                lastvalueSpeedRight = (buffer.data / float(MAX_PERCENT)) * float(MAX_ANALOG);
                 if (lastvalueSpeedRight < buffer.data) {
                     for (int i = lastvalueSpeedRight; i < buffer.data; i++) {
                         analogWrite(SPEED_RIGHT, i);
@@ -115,9 +119,9 @@ void actTask(void *pvParameters) {
                 break;
             case CODE_ANGLE_HORIZONTAL:
                 if (buffer.data <= 100) {
-                    buffer.data = (buffer.data / 100) * float(MAX_SPEED);
+                    buffer.data = (buffer.data / float(MAX_PERCENT)) * float(MAX_SPEED);
                 } else {
-                    buffer.data = (buffer.data - 100) / 100 * float(MAX_SPEED) * -1;
+                    buffer.data = (buffer.data - float(MAX_PERCENT)) / float(MAX_PERCENT) * float(MAX_SPEED) * -1;
                 }
                 angleHori.setSpeed(buffer.data);
                 Serial.println("CODE_ANGLE_HORIZONTAL : " + String(buffer.data));
@@ -125,9 +129,9 @@ void actTask(void *pvParameters) {
                 break;
             case CODE_ANGLE_VERTICAL:
                 if (buffer.data <= 100) {
-                    buffer.data = (buffer.data / 100) * float(MAX_SPEED);
+                    buffer.data = (buffer.data / float(MAX_PERCENT)) * float(MAX_SPEED);
                 } else {
-                    buffer.data = (buffer.data - 100) / 100 * float(MAX_SPEED) * -1;
+                    buffer.data = (buffer.data - float(MAX_PERCENT)) / float(MAX_PERCENT) * float(MAX_SPEED) * -1;
                 }
                 if (buffer.data > MAX_SPEED) {
                     buffer.data = (buffer.data - MAX_SPEED) * -1;
