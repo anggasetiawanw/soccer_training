@@ -49,7 +49,7 @@ int lastPositionVerti = 0;
 #define MAX_PERCENT 100
 #define MAX_STEP_APPS 200
 #define STEP_HORI 10
-#define STEP_VERTI 175
+#define STEP_VERTI 75
 
 bool isAnalog = false;
 // Pins
@@ -289,8 +289,8 @@ void analogTask(void *pvParameter) {
             } else {
                 angleSamping.setSpeed(0);
             }
-                angleSamping.runSpeed();  // step the motor (this will step the motor by 1 step at each loop indefinitely)
-                angleAtasBawah.runSpeed();
+            angleSamping.runSpeed();  // step the motor (this will step the motor by 1 step at each loop indefinitely)
+            angleAtasBawah.runSpeed();
         }
         vTaskDelay(50);
     }
