@@ -10,9 +10,14 @@
 #define SPEED_LEFT 5
 #define SPEED_RIGHT 6
 
+#define MEGA_SW
 #define MEGA
 #ifdef MEGA
+#ifdef MEGA_SW
+#define bluetooth NeoSWSerial(50, 51)
+#else 
 #define bluetooth NeoSerial1
+#endif
 #else
 #define bluetooth NeoSWSerial(4, 13)
 #endif
@@ -332,6 +337,9 @@ void setup() {
     bluetooth.begin(9600);
 
 #ifndef MEGA
+    bluetooth.listen();
+#endif
+#ifdef MEGA_SW
     bluetooth.listen();
 #endif
 
