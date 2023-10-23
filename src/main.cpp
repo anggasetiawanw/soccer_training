@@ -69,7 +69,7 @@ struct dataLog {
     char code;
     int data;
 };
-
+#ifdef MEGA
 // Pins
 const byte Analog_X_pin = A0;  // x-axis readings
 const byte Analog_Y_pin = A1;  // y-axis readings
@@ -77,6 +77,7 @@ const byte Analog_Y_pin = A1;  // y-axis readings
 int Analog_X_AVG = 0;  // x-axis value average
 int Analog_Y_AVG = 0;  // y-axis value average
 
+#endif
 void stopsHori() {
     angleSamping.stop();
     angleSamping.setCurrentPosition(0);
@@ -273,7 +274,7 @@ void actTask(void *pvParameters) {
         }
     }
 }
-
+#ifdef MEGA
 void analogTask(void *pvParameters) {
     // Variables
     int Analog_X = 0;  // x-axis value
@@ -325,6 +326,7 @@ void InitialValues() {
     Serial.println(Analog_Y_AVG);
     Serial.println("Calibration finished");
 }
+#endif
 void setup() {
     Serial.begin(9600);
     bluetooth.begin(9600);
@@ -363,13 +365,14 @@ void setup() {
         NULL,
         2,
         NULL);
-
-    xTaskCreate(
-        analogTask, "analogTask",
-        128,
-        NULL,
-        2,
-        NULL);
+#ifdef MEGA
+    // xTaskCreate(
+    //     analogTask, "analogTask",
+    //     128,
+    //     NULL,
+    //     2,
+    //     NULL);
+#endif
 }
 
 void loop() {
