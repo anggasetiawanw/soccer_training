@@ -249,14 +249,10 @@ void actTask(void *pvParameters) {
             }
             case CODE_MIN_PWM: {
                 MIN_PWM = buffer.data;
-                resetPosition();
-                Serial.println("RESET");
                 break;
             }
             case CODE_MAX_PWM: {
                 MAX_PWM = buffer.data;
-                resetPosition();
-                Serial.println("RESET");
                 break;
             }
             default:
