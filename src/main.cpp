@@ -4,13 +4,18 @@
 #include <queue.h>
 
 #include "AccelStepper.h"
+#include "NeoHWSerial.h"
 
 // DEFINE PIN
 #define SPEED_LEFT 5
 #define SPEED_RIGHT 6
 
-// BT SERIAL DEFINE
-NeoSWSerial bluetooth(4, 13);
+#define MEGA
+#ifdef MEGA
+#define bluetooth NeoSerial1
+#else
+#define bluetooth NeoSWSerial(4, 13)
+#endif
 
 // QUEUE TASK DEFINE
 QueueHandle_t dataQueue;
@@ -64,6 +69,13 @@ struct dataLog {
     char code;
     int data;
 };
+
+// Pins
+const byte Analog_X_pin = A0;  // x-axis readings
+const byte Analog_Y_pin = A1;  // y-axis readings
+
+int Analog_X_AVG = 0;  // x-axis value average
+int Analog_Y_AVG = 0;  // y-axis value average
 
 void stopsHori() {
     angleSamping.stop();
@@ -262,19 +274,77 @@ void actTask(void *pvParameters) {
     }
 }
 
+void analogTask(void *pvParameters) {
+    // Variables
+    int Analog_X = 0;  // x-axis value
+    int Analog_Y = 0;  // y-axis value
+    while (1) {
+        // Reading the 3 potentiometers in the joystick: x, y and r.
+        Analog_X = analogRead(Analog_X_pin);
+        Analog_Y = analogRead(Analog_Y_pin);
+
+        // if the value is 25 "value away" from the average (midpoint), we allow the update of the speed
+        // This is a sort of a filter for the inaccuracy of the reading
+        if (abs(Analog_X - Analog_X_AVG) > 25) {
+            angleSamping.setSpeed(5 * (Analog_X - Analog_X_AVG));
+        } else {
+            angleSamping.setSpeed(0);
+        }
+        //----------------------------------------------------------------------------
+        if (abs(Analog_Y - Analog_Y_AVG) > 25) {
+            angleAtasBawah.setSpeed(5 * (Analog_Y - Analog_Y_AVG));
+        } else {
+            angleAtasBawah.setSpeed(0);
+        }
+        angleSamping.runSpeed();  // step the motor (this will step the motor by 1 step at each loop indefinitely)
+        angleAtasBawah.runSpeed();
+        vTaskDelay(10);
+    }
+}
+void InitialValues() {
+    // Set the values to zero before averaging
+    float tempX = 0;
+    float tempY = 0;
+    float tempR = 0;
+    //----------------------------------------------------------------------------
+    // read the analog 50x, then calculate an average.
+    // they will be the reference values
+    for (int i = 0; i < 50; i++) {
+        tempX += analogRead(Analog_X_pin);
+        delay(10);  // allowing a little time between two readings
+        tempY += analogRead(Analog_Y_pin);
+        delay(10);
+    }
+    //----------------------------------------------------------------------------
+    Analog_X_AVG = tempX / 50;
+    Analog_Y_AVG = tempY / 50;
+    //----------------------------------------------------------------------------
+    Serial.print("AVG_X: ");
+    Serial.println(Analog_X_AVG);
+    Serial.print("AVG_Y: ");
+    Serial.println(Analog_Y_AVG);
+    Serial.println("Calibration finished");
+}
 void setup() {
     Serial.begin(9600);
     bluetooth.begin(9600);
+
+#ifndef MEGA
     bluetooth.listen();
+#endif
+
     pinMode(SPEED_LEFT, OUTPUT);
     pinMode(SPEED_RIGHT, OUTPUT);
     pinMode(ISR_PIN_HORI, INPUT_PULLUP);
     pinMode(ISR_PIN_VERTI, INPUT_PULLUP);
+    pinMode(Analog_X_pin, INPUT);
+    pinMode(Analog_Y_pin, INPUT);
     angleAtasBawah.setMaxSpeed(MAX_SPEED);
     angleAtasBawah.setAcceleration(MAX_ACCEL * 2);
     angleSamping.setMaxSpeed(MAX_SPEED);
     angleSamping.setAcceleration(MAX_ACCEL);
     resetPosition();
+    InitialValues();
 
     dataQueue = xQueueCreate(10, sizeof(dataLog));
     if (dataQueue == NULL) {
@@ -289,6 +359,13 @@ void setup() {
 
     xTaskCreate(
         actTask, "actTask",
+        128,
+        NULL,
+        2,
+        NULL);
+
+    xTaskCreate(
+        analogTask, "analogTask",
         128,
         NULL,
         2,
