@@ -10,7 +10,7 @@
 #define SPEED_RIGHT 6
 
 // BT SERIAL DEFINE
-NeoSWSerial bluetooth(4, 3);
+NeoSWSerial bluetooth(4, 13);
 
 // QUEUE TASK DEFINE
 QueueHandle_t dataQueue;
