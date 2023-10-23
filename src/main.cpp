@@ -10,20 +10,16 @@
 #define SPEED_LEFT 5
 #define SPEED_RIGHT 6
 
-#define MEGA_SW
 #define MEGA
 #ifdef MEGA
-#ifdef MEGA_SW
-#define bluetooth NeoSWSerial(50, 51)
-#else 
-#define bluetooth NeoSerial1
-#endif
+#define bluetooth Serial1
 #else
 #define bluetooth NeoSWSerial(4, 13)
 #endif
 
 // QUEUE TASK DEFINE
 QueueHandle_t dataQueue;
+TaskHandle_t analogTaskHandle;
 
 // CODE MSG DEFINE
 // 0-100 -> A100 -> 100%,,,, ?? CODE[NILAI]
@@ -111,6 +107,7 @@ void resetPosition() {
         angleSamping.runToPosition();
         Serial.println("INITIAL POSITION HORIZONTAL : " + String(angleSamping.currentPosition()));
     }
+    lastPositionHori = angleSamping.currentPosition();
 
     Serial.println("Detect VERTI : " + String(digitalRead(ISR_PIN_VERTI)));
     if (digitalRead(ISR_PIN_VERTI) == 0) {
@@ -127,6 +124,7 @@ void resetPosition() {
         angleAtasBawah.runToPosition();
         Serial.println("INITIAL POSITION VERTICAL : " + String(angleAtasBawah.currentPosition()));
     }
+    lastPositionVerti = angleAtasBawah.currentPosition();
 }
 
 void btTask(void *pvParameters) {
@@ -137,7 +135,6 @@ void btTask(void *pvParameters) {
     while (1) {
         if (bluetooth.available() > 0) {
             char command = bluetooth.read();
-            Serial.println("BT READ : " + String(command));
             if (command == CODE_SPEED_LEFT || command == CODE_SPEED_RIGHT || command == CODE_ANGLE_VERTICAL || command == CODE_ANGLE_HORIZONTAL || command == CODE_RELEASE || command == CODE_TOGGLE || command == CODE_RESET || command == CODE_MIN_PWM || command == CODE_MAX_PWM) {
                 buffer.code = command;
                 valid = true;
@@ -208,6 +205,7 @@ void actTask(void *pvParameters) {
             }
 
             case CODE_ANGLE_HORIZONTAL: {
+                // vTaskSuspend(analogTaskHandle);
                 // int run = 0;
                 if (buffer.data > MAX_STEP_APPS) {
                     buffer.data = (buffer.data - MAX_STEP_APPS) * -1;
@@ -217,11 +215,14 @@ void actTask(void *pvParameters) {
                 angleSamping.moveTo(run);
                 angleSamping.runToPosition();
                 Serial.println("CODE_ANGLE_HORIZONTAL : " + String(angleSamping.currentPosition()) + " RUN : " + String(run));
+                lastPositionHori = angleSamping.currentPosition();
+                // vTaskResume(analogTaskHandle);
                 /* code */
                 break;
             }
 
             case CODE_ANGLE_VERTICAL: {
+                // vTaskSuspend(analogTaskHandle);
                 float runs = 0;
                 if (buffer.data > MAX_STEP_APPS) {
                     buffer.data = (buffer.data - MAX_STEP_APPS) * -1;
@@ -237,6 +238,8 @@ void actTask(void *pvParameters) {
                 angleAtasBawah.moveTo(runs);
                 angleAtasBawah.runToPosition();
                 Serial.println("CODE_ANGLE_VERTI : " + String(angleAtasBawah.currentPosition()) + " RUN : " + String(runs));
+                lastPositionVerti = angleAtasBawah.currentPosition();
+                // vTaskResume(analogTaskHandle);
                 break;
             }
 
@@ -288,22 +291,35 @@ void analogTask(void *pvParameters) {
         // Reading the 3 potentiometers in the joystick: x, y and r.
         Analog_X = analogRead(Analog_X_pin);
         Analog_Y = analogRead(Analog_Y_pin);
-
-        // if the value is 25 "value away" from the average (midpoint), we allow the update of the speed
-        // This is a sort of a filter for the inaccuracy of the reading
         if (abs(Analog_X - Analog_X_AVG) > 25) {
+            if (Analog_X - Analog_X_AVG > 0) {
+                lastPositionHori += 100;
+                angleSamping.move(lastPositionHori);
+                // angleSamping.runToPosition();
+            } else {
+                lastPositionHori -= 100;
+                angleSamping.move(lastPositionHori);
+                // angleSamping.runToPosition();
+            }
+
             angleSamping.setSpeed(5 * (Analog_X - Analog_X_AVG));
-        } else {
-            angleSamping.setSpeed(0);
         }
         //----------------------------------------------------------------------------
         if (abs(Analog_Y - Analog_Y_AVG) > 25) {
+            if (Analog_Y - Analog_Y_AVG > 0) {
+                lastPositionVerti += 100;
+                angleAtasBawah.move(lastPositionVerti);
+                // angleAtasBawah.runToPosition();
+            } else {
+                lastPositionVerti -= 100;
+                angleAtasBawah.move(lastPositionVerti);
+                // angleAtasBawah.runToPosition();
+            }
+
             angleAtasBawah.setSpeed(5 * (Analog_Y - Analog_Y_AVG));
-        } else {
-            angleAtasBawah.setSpeed(0);
         }
-        angleSamping.runSpeed();  // step the motor (this will step the motor by 1 step at each loop indefinitely)
-        angleAtasBawah.runSpeed();
+        angleAtasBawah.runSpeedToPosition();
+        angleSamping.runSpeedToPosition();
         vTaskDelay(10);
     }
 }
@@ -311,7 +327,6 @@ void InitialValues() {
     // Set the values to zero before averaging
     float tempX = 0;
     float tempY = 0;
-    float tempR = 0;
     //----------------------------------------------------------------------------
     // read the analog 50x, then calculate an average.
     // they will be the reference values
@@ -337,9 +352,6 @@ void setup() {
     bluetooth.begin(9600);
 
 #ifndef MEGA
-    bluetooth.listen();
-#endif
-#ifdef MEGA_SW
     bluetooth.listen();
 #endif
 
@@ -374,12 +386,12 @@ void setup() {
         2,
         NULL);
 #ifdef MEGA
-    // xTaskCreate(
-    //     analogTask, "analogTask",
-    //     128,
-    //     NULL,
-    //     2,
-    //     NULL);
+    xTaskCreate(
+        analogTask, "analogTask",
+        256,
+        NULL,
+        2,
+        &analogTaskHandle);
 #endif
 }
 
