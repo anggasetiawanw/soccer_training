@@ -354,14 +354,14 @@ void setup() {
     }
     xTaskCreate(
         btTask, "btTask",
-        128,
+        256,
         NULL,
         2,
         NULL);
 
     xTaskCreate(
         actTask, "actTask",
-        128,
+        256,
         NULL,
         2,
         NULL);
